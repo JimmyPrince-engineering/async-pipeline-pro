@@ -21,4 +21,13 @@ class Result:
     succes : bool,
     error_kind : str|None,
     duration_s : float
-    
+
+def load_urls(path : Path) -> list[str]:
+    ""
+    with path.open(encoding="utf-8") as source:
+        urls = [
+            line.strip() for line in source if line and not line.lstrip().startswith("#")
+        ]
+    if not urls:
+        raise ValueError(f"There is no URL to test in {path}.")
+    return urls
