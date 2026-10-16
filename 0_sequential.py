@@ -4,6 +4,8 @@ from pathlib import Path
 from urllib.parse import urlsplit
 import logging
 import time
+import statistics
+
 from dataclasses import asdict, dataclass
 
 
@@ -70,5 +72,32 @@ def save_CSV(results : list[Result], path : Path) -> None:
         for result in results:
             writer.writerow(asdict(result))
 
-def report(results : list[Result]) -> None:
+def report(results : list[Result], wall_time_s :float) -> None:
+    ""
+    duration = [result.duration_s for result in results]
+    successes = sum(result.succes for result in results)
+    faillures = len(results) - successes
+    errors = Counter(result.error_kind for result in results if result.error_kind)
+
+    print("==M0 - SEQUENTIAL BASELINE==")
+    print(f"Requests: {len(results)} | OK (2xx): {successes} | KO: {faillures}")
+    print(f"Total duration (gross): {wall_time_s}")
+    print(f"Request duration sum : {sum(duration)}")
+    print(f"Mean/Request: {statistics.mean(duration)} ")
+    print(f"Median/Request: {statistics.median(duration)}")
+
+    print("\nTop 5 very slow (include faillures)\n")
+    for result in sorted(results, key= lambda item : item.duration_s, reversed=True)[:5]:
+        outcome = result.status_code if status_code is not None else result.error_kind
+        print(f"{result.duration_s:.3f} | {outcome}| {result.url}")
+
+    print("\nFaillure per type\n")
+
+    if errors:
+        for kind, count in sorted(errors.items()):
+            print(f"{kind} : {count}")
+    else:
+        print("There is not error.")
+    
+    
     
