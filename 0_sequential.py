@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from urllib.parse import urlsplit
 import logging
+import argparse
 import time
 import statistics
 
@@ -19,11 +20,11 @@ CSV_COLUMNS = (
 @dataclass(frozen=True)
 class Result:
     ""
-    url : str,
-    final_url : str|None,
-    status_code : int|None,
-    succes : bool,
-    error_kind : str|None,
+    url : str
+    final_url : str|None
+    status_code : int|None
+    succes : bool
+    error_kind : str|None
     duration_s : float
 
 def load_urls(path : Path) -> list[str]:
@@ -98,6 +99,54 @@ def report(results : list[Result], wall_time_s :float) -> None:
             print(f"{kind} : {count}")
     else:
         print("There is not error.")
+
+
+def main():
+    ""
+    parser = argparse.ArgumentParser(description="M0 sequential HTTP Baseline")
+    parser.add_argument("--urls", type=Path, default="urls.txt")
+    parser.add_argument("--output", type=Path, default="m0_results.csv")
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s : %(message)s")
+
+    try:
+        urls = load_urls(args.urls)
+    except (OSError, UnicodeError, ValueError) as exc :
+        parser.error(str(exc))
+
+    results : list[Result] = []
+    start = time.perf_counter()
+    try:
+        with httpx.Client(
+            timeout = 10.0,
+            follow_redirects = True,
+            headers = {"User-Agent" : USER_AGENT}
+        ) as client:
+            for index, url in enumerate(urls):
+                result = measure_one(client, url)
+                outcome = result.status_code if result.status_code is not None else result.error_kind
+                print(f"[{index}/{len(urls)}]  | {outcome}  | {result.duration_s:.3f}")
+                results.append(result)
+    except InterruptedError:
+        LOGGER.error("")
+    wall_time_s = time.perf_counter() - start
+
+    if not results:
+        LOGGER.error("There is not resultto save.")
+        return 1
+
+    try:
+        save_CSV(results, args.output)
+        print(f"Results successfully saved.")
+    except OSError as exc:
+        logging.error("Impossible to write CSV %s: %s", pars.output, exc)
+        return 1
+    finally:
+        report(results, wall_time_s)
+    
+    return 0 if len(results)==len(urls) else 30
     
     
-    
+if __name__ == "__main__":
+    raise SystemExit(main())
