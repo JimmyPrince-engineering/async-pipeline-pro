@@ -34,6 +34,17 @@ class Result:
     root_cause : str|None
     duration_s : float
 
+@dataclass(frozen=True)
+class Resume:
+    ""
+    date_time: str
+    request_number: int
+    OK : int
+    KO : int
+    duration_sum : float
+    mean : float
+    median : float
+
 
 def get_root_cause(exc: Exception) -> str:
     ""
