@@ -17,7 +17,7 @@ from dataclasses import asdict, dataclass
 LOGGER = logging.getLogger("Pipeline.m0")
 USER_AGENT = "AsyncPipelinePro/0.2 (personnal site monitor)"
 CSV_COLUMNS = (
-    "url", "final_url", "status_code", "success", "error_kind", "error_detail", "cause_root", "duration_s"
+    "url", "final_url", "status_code", "success", "error_kind", "error_detail", "root_cause", "duration_s"
 )
 
 
@@ -30,7 +30,7 @@ class Result:
     success : bool
     error_kind : str|None
     error_detail : str|None
-    cause_root : str|None
+    croot_cause : str|None
     duration_s : float
 
 
@@ -79,6 +79,8 @@ def measure_one(client :httpx.Client, url : str) -> Result:
     status_code = None
     success = False
     error_kind = None
+    error_detail = None
+    root_cause = None
 
     try:
         response = client.get(url)
@@ -89,14 +91,18 @@ def measure_one(client :httpx.Client, url : str) -> Result:
             error_kind = f"HTTP_{status_code}"
     except httpx.InvalidURL as exc:
         error_kind = type(exc).__name__
+        error_detail = str(exc)[:150]
+        root_cause = get_root_cause(exc)
         LOGGER.warning("URL Error:  %s  (%s) ", url, exc)
     except httpx.RequestError as exc:
         error_kind = type(exc).__name__
+        error_detail = str(exc)[:150]
+        root_cause = get_root_cause(exc)
         LOGGER.warning("Request Error:  %s  error_kind: %s  (%s)", url, error_kind, exc)
     finally:
         elapsed = time.perf_counter() - start
 
-    return Result(url, final_url, status_code, success, error_kind, elapsed)
+    return Result(url, final_url, status_code, success, error_kind, error_detail, root_cause, elapsed)
 
 def save_CSV(results : list[Result], path : Path) -> None:
     ""
