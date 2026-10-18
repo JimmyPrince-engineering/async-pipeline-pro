@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from urllib.parse import urlsplit
+from collections import Counter
 import logging
 import argparse
 import time
@@ -117,6 +118,8 @@ def main():
 
     results : list[Result] = []
     start = time.perf_counter()
+
+    interrupted = False 
     try:
         with httpx.Client(
             timeout = 10.0,
@@ -128,7 +131,8 @@ def main():
                 outcome = result.status_code if result.status_code is not None else result.error_kind
                 print(f"[{index}/{len(urls)}]  | {outcome}  | {result.duration_s:.3f}")
                 results.append(result)
-    except InterruptedError:
+    except KeyboardInterrupt:
+        interrupted = True
         LOGGER.error("")
     wall_time_s = time.perf_counter() - start
 
@@ -145,7 +149,7 @@ def main():
     finally:
         report(results, wall_time_s)
     
-    return 0 if len(results)==len(urls) else 30
+    return 0 if interrupted else 130
     
     
 if __name__ == "__main__":
