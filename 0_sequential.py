@@ -41,6 +41,16 @@ def load_urls(path : Path) -> list[str]:
         raise ValueError(f"There is no URL to test in {path}.")
     return urls
 
+
+def url_is_valid(url: str) -> bool:
+    ""
+    try:
+        parts = urlsplit(url)
+        return (parts.scheme in ("http", "https") and parts.hostname)
+    except ValueError:
+        return False
+
+
 def measure_one(client :httpx.Client, url : str) -> Result:
     ""
     start = time.perf_counter()
