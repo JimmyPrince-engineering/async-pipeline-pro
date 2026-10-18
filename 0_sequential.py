@@ -33,6 +33,18 @@ class Result:
     cause_root : str|None
     duration_s : float
 
+
+def get_root_cause(exc: Exception) -> str:
+    ""
+    current= exc
+    seen = set()
+    while current.__cause__ is not None:
+        if id(current) in seen:
+            break
+        seen.add(id(current))
+        current = current.__cause__
+    return type(current).__name__
+
 def load_urls(path : Path) -> list[str]:
     ""
     urls = []
