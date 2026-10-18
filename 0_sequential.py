@@ -100,7 +100,7 @@ def report(results : list[Result], wall_time_s :float) -> None:
     print("\nFaillure per type\n")
 
     if errors:
-        for kind, count in sorted(errors.items()):
+        for kind, count in sorted(errors.items(), key = lambda item : item[1], reverse=True):
             print(f"{kind} : {count}")
     else:
         print("There is not error.")
