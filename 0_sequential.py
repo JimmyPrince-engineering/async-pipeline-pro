@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from urllib.parse import urlsplit
 from collections import Counter
+from datetime import timezone, datetime
 import logging
 import argparse
 import time
@@ -149,9 +150,11 @@ def report(results : list[Result], wall_time_s :float) -> None:
 
 def main():
     ""
+    timestamp = datetime.now(timezome.utc).strftime("%Y%m%d_%H%M%S")
+    
     parser = argparse.ArgumentParser(description="M0 sequential HTTP Baseline")
     parser.add_argument("--urls", type=Path, default="urls.txt")
-    parser.add_argument("--output", type=Path, default="m0_results.csv")
+    parser.add_argument("--output", type=Path, default=f"m0_results_{timestamp}.csv")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s : %(message)s")
