@@ -60,9 +60,6 @@ def measure_one(client :httpx.Client, url : str) -> Result:
     error_kind = None
 
     try:
-        parts = urlsplit(url)
-        if parts.scheme not in ("http", "https") or not parts.hostname :
-            raise ValueError("URL must contains http(s) scheme and hostname")
         response = client.get(url)
         final_url = str(response.url)
         status_code = response.status_code
