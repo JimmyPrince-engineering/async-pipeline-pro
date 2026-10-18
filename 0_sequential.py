@@ -94,11 +94,18 @@ def measure_one(client :httpx.Client, url : str) -> Result:
         error_detail = str(exc)[:150]
         root_cause = get_root_cause(exc)
         LOGGER.warning("URL Error:  %s  (%s) ", url, exc)
+    
     except httpx.RequestError as exc:
         error_kind = type(exc).__name__
         error_detail = str(exc)[:150]
         root_cause = get_root_cause(exc)
         LOGGER.warning("Request Error:  %s  error_kind: %s  (%s)", url, error_kind, exc)
+
+    except Exception as exc:
+        error_kind = "Unexpected"
+        error_detail = str(exc)[:150]
+        root_cause = get_root_cause(exc)
+        LOGGER.exception("Unexpected error for %s", url)
     finally:
         elapsed = time.perf_counter() - start
 
