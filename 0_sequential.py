@@ -17,9 +17,12 @@ from dataclasses import asdict, dataclass
 
 LOGGER = logging.getLogger("Pipeline.m0")
 USER_AGENT = "AsyncPipelinePro/0.2 (personnal site monitor)"
-CSV_COLUMNS = (
+CSV_RESULT_COLUMNS = (
     "url", "final_url", "status_code", "success", "error_kind", "error_detail", "root_cause", "duration_s"
 )
+CSV_RESUME_COLUMNS = {
+    "date_time", "request_number", "OK", "KO", "total_duration", "duration_sum", "mean", "median", "five_very_slow", "errors_count"
+}
 
 
 @dataclass(frozen=True)
@@ -41,7 +44,7 @@ class Resume:
     request_number: int
     OK : int
     KO : int
-    total_duration
+    total_duration : float
     duration_sum : float
     mean : float
     median : float
@@ -128,28 +131,47 @@ def measure_one(client :httpx.Client, url : str) -> Result:
     return Result(url, final_url, status_code, success, error_kind, error_detail, root_cause, elapsed)
 
 
-def make_resume(results: list[Result]) -> Resume:
+def make_resume(report: dict[Any]) -> Resume:
     ""
-    _durations = (result.duration_s for result in results)
-    
-    date_time = datetime.now(timezone.utc).strftime("%Y/%m/%d %H:%M:%S")
-    request_number = len(results)
-    OK = sum(result.success for result in results)
-    KO = request_number - OK
-    duration_sum = sum(_durations)
-    mean = statistics.mean(_durations)
-    median = statistics.median(_durations)
-    
-    return Resume(date_time, request_number, OK, KO, duration_sum, mean, median)
+    return Resume (
+        date_time = datetime.now(timezone.utc).strftime("%Y/%m/%d %H:%M:%S"),
+        request_number = report["requests"],
+        OK = report["successes"],
+        KO = report["faillures"],
+        total_duration = report["total_duration"],
+        duration_sum = report["duration_sum"],
+        mean = report["mean"],
+        median = report["median"],
+        five_very_slow = report["five_very_slow"],
+        errors_count = report["errors_count"] if report["errors_count"] else None,
+    )
 
 
-def save_CSV(results : list[Result], path : Path) -> None:
+def save_CSV_result(results : list[Result], path : Path) -> None:
     ""
     with path.open("w", newline="", encoding="utf-8") as destination:
-        writer = csv.DictWriter(destination, fieldnames=CSV_COLUMNS)
+        writer = csv.DictWriter(destination, fieldnames=CSV_RESULT_COLUMNS)
         writer.writeheader()
         for result in results:
             writer.writerow(asdict(result))
+
+
+def save_CSV_resume(resume : Resume, path : Path) -> None :
+    ""
+    is_new = True
+    try:
+        with path.open("r", encoding="utf-8") as destination:
+           if  next(destination).strip():
+               is_new = True
+    except FileNotFoundError:
+        pass
+            
+    with path.open("a", newline="", encoding="utf-8") as destination:
+        writer = csv.DictWriter(destination, fieldnames=CSV_RESUME_COLUMNS)
+        if not is_new:
+            writer.writeheader()
+        writer.writerow(asdict(resume))
+
 
 
 def compute_report(results : list[Result], wall_time_s :float) -> dict[Any]:
@@ -162,7 +184,7 @@ def compute_report(results : list[Result], wall_time_s :float) -> dict[Any]:
     five_very_slow = []
     for result in sorted(results, key= lambda item : item.duration_s, reverse=True)[:5]:
         outcome = result.status_code if result.status_code is not None else result.error_kind
-        five_very_slow.append((result.duration, outcome, result.url))
+        five_very_slow.append((result.duration_s, outcome, result.url))
 
     return {
         "requests" : len(results) ,
@@ -239,14 +261,24 @@ def main():
         LOGGER.error("There is not resultto save.")
         return 1
 
+    report = compute_report(results, wall_time_s)
+
     try:
-        save_CSV(results, args.output)
-        print(f"Results successfully saved.")
+        path = Path("m0_runs.csv")
+        resume = make_resume(report)
+        save_CSV_resume(resume, path)
+        print(f"\nResume successfully saved.\n")
     except OSError as exc:
-        logging.error("Impossible to write CSV %s: %s", pars.output, exc)
+        logging.error("Impossible to write CSV resume %s: %s", path, exc)
+
+    try:
+        save_CSV_result(results, args.output)
+        print(f"\nResults successfully saved.\n")
+    except OSError as exc:
+        logging.error("Impossible to write CSV results %s: %s", pars.output, exc)
         return 1
     finally:
-        report(results, wall_time_s)
+        print_report(report)
     
     return 0 if not interrupted else 130
     
