@@ -66,7 +66,7 @@ def measure_one(client :httpx.Client, url : str) -> Result:
         success = response.is_success
         if not success:
             error_kind = f"HTTP_{status_code}"
-    except (httpx.InvalidURL, ValueError) as exc:
+    except httpx.InvalidURL as exc:
         error_kind = type(exc).__name__
         LOGGER.warning("URL Error:  %s  (%s) ", url, exc)
     except httpx.RequestError as exc:
