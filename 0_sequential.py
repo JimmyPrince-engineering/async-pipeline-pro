@@ -148,29 +148,49 @@ def save_CSV(results : list[Result], path : Path) -> None:
         for result in results:
             writer.writerow(asdict(result))
 
-def report(results : list[Result], wall_time_s :float) -> None:
+
+def compute_report(results : list[Result], wall_time_s :float) -> dict[Any]:
     ""
     duration = [result.duration_s for result in results]
     successes = sum(result.success for result in results)
     faillures = len(results) - successes
     errors = Counter(result.error_kind for result in results if result.error_kind)
-
-    print("==M0 - SEQUENTIAL BASELINE==")
-    print(f"Requests: {len(results)} | OK (2xx): {successes} | KO: {faillures}")
-    print(f"Total duration (gross): {wall_time_s}")
-    print(f"Request duration sum : {sum(duration)}")
-    print(f"Mean/Request: {statistics.mean(duration)} ")
-    print(f"Median/Request: {statistics.median(duration)}")
-
-    print("\nTop 5 very slow (include faillures)\n")
+    
+    five_very_slow = []
     for result in sorted(results, key= lambda item : item.duration_s, reverse=True)[:5]:
         outcome = result.status_code if result.status_code is not None else result.error_kind
-        print(f"{result.duration_s:.3f} | {outcome}| {result.url}")
+        five_very_slow.append((result.duration, outcome, result.url))
+
+    return {
+        "requests" : len(results) ,
+        "successes" : successes,
+        "faillures" : faillures,
+        "total_duration" : wall_time_s,
+        "duration_sum" : sum(duration),
+        "mean" : statistics.mean(duration),
+        "median" : statistics.median(duration),
+        "five_very_slow" : five_very_slow,
+        "errors_count" : errors
+    }
+
+
+def print_report(report : dict[Any]) -> None:
+    ""
+    print("==M0 - SEQUENTIAL BASELINE==")
+    print(f"Requests: {report["requests"]} | OK (2xx): {report["successes"]} | KO: {report["faillures"]}")
+    print(f"Total duration (gross): {report["total_duration"]}")
+    print(f"Request duration sum : {report["duration_sum"]}")
+    print(f"Mean/Request: {report["mean"]} ")
+    print(f"Median/Request: {report["median"]}")
+
+    print("\nTop 5 very slow (include faillures)\n")
+    for duration_s, outcome, url in report["five_very_slow"]:
+        print(f"{duration_s:.3f} | {outcome}| {url}")
 
     print("\nFaillure per type\n")
 
-    if errors:
-        for kind, count in sorted(errors.items(), key = lambda item : item[1], reverse=True):
+    if report["errors_count"]:
+        for kind, count in sorted(report["errors_count"].items(), key = lambda item : item[1], reverse=True):
             print(f"{kind} : {count}")
     else:
         print("There is not error.")
