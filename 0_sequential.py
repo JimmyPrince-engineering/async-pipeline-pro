@@ -17,7 +17,7 @@ from dataclasses import asdict, dataclass
 LOGGER = logging.getLogger("Pipeline.m0")
 USER_AGENT = "AsyncPipelinePro/0.2 (personnal site monitor)"
 CSV_COLUMNS = (
-    "url", "final_url", "status_code", "success", "error_kind", "duration_s"
+    "url", "final_url", "status_code", "success", "error_kind", "error_detail", "cause_root", "duration_s"
 )
 
 
@@ -29,6 +29,8 @@ class Result:
     status_code : int|None
     success : bool
     error_kind : str|None
+    error_detail : str|None
+    cause_root : str|None
     duration_s : float
 
 def load_urls(path : Path) -> list[str]:
