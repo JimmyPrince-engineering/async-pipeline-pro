@@ -124,6 +124,22 @@ def measure_one(client :httpx.Client, url : str) -> Result:
 
     return Result(url, final_url, status_code, success, error_kind, error_detail, root_cause, elapsed)
 
+
+def make_resume(results: list[Result]) -> Resume:
+    ""
+    _durations = (result.duration_s for result in results)
+    
+    date_time = datetime.now(timezone.utc).strftime("%Y/%m/%d %H:%M:%S")
+    request_number = len(results)
+    OK = sum(result.success for result in results)
+    KO = request_number - OK
+    duration_sum = sum(_durations)
+    mean = statistics.mean(_durations)
+    median = statistics.median(_durations)
+    
+    return Resume(date_time, request_number, OK, KO, duration_sum, mean, median)
+
+
 def save_CSV(results : list[Result], path : Path) -> None:
     ""
     with path.open("w", newline="", encoding="utf-8") as destination:
