@@ -41,9 +41,12 @@ class Resume:
     request_number: int
     OK : int
     KO : int
+    total_duration
     duration_sum : float
     mean : float
     median : float
+    five_very_slow : list[tuple[Any]]
+    errors_count : dict[str, int]|None
 
 
 def get_root_cause(exc: Exception) -> str:
