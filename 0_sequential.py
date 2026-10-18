@@ -31,7 +31,7 @@ class Result:
     success : bool
     error_kind : str|None
     error_detail : str|None
-    croot_cause : str|None
+    root_cause : str|None
     duration_s : float
 
 
@@ -90,6 +90,7 @@ def measure_one(client :httpx.Client, url : str) -> Result:
         success = response.is_success
         if not success:
             error_kind = f"HTTP_{status_code}"
+    
     except httpx.InvalidURL as exc:
         error_kind = type(exc).__name__
         error_detail = str(exc)[:150]
@@ -150,7 +151,7 @@ def report(results : list[Result], wall_time_s :float) -> None:
 
 def main():
     ""
-    timestamp = datetime.now(timezome.utc).strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     
     parser = argparse.ArgumentParser(description="M0 sequential HTTP Baseline")
     parser.add_argument("--urls", type=Path, default="urls.txt")
@@ -197,7 +198,7 @@ def main():
     finally:
         report(results, wall_time_s)
     
-    return 0 if interrupted else 130
+    return 0 if not interrupted else 130
     
     
 if __name__ == "__main__":
