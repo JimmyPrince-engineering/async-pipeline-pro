@@ -7,6 +7,9 @@ import logging
 import argparse
 import time
 import statistics
+import csv
+
+import httpx
 
 from dataclasses import asdict, dataclass
 
@@ -14,7 +17,7 @@ from dataclasses import asdict, dataclass
 LOGGER = logging.getLogger("Pipeline.m0")
 USER_AGENT = "AsyncPipelinePro/0.2 (personnal site monitor)"
 CSV_COLUMNS = (
-    "url", "final_url", "status_code", "succes", "error_kind", "duration_s"
+    "url", "final_url", "status_code", "success", "error_kind", "duration_s"
 )
 
 
@@ -24,7 +27,7 @@ class Result:
     url : str
     final_url : str|None
     status_code : int|None
-    succes : bool
+    success : bool
     error_kind : str|None
     duration_s : float
 
@@ -32,7 +35,7 @@ def load_urls(path : Path) -> list[str]:
     ""
     with path.open(encoding="utf-8") as source:
         urls = [
-            line.strip() for line in source if line and not line.lstrip().startswith("#")
+            line.strip() for line in source if line.strip() and not line.lstrip().startswith("#")
         ]
     if not urls:
         raise ValueError(f"There is no URL to test in {path}.")
@@ -43,17 +46,18 @@ def measure_one(client :httpx.Client, url : str) -> Result:
     start = time.perf_counter()
     final_url = None
     status_code = None
+    success = False
     error_kind = None
 
     try:
         parts = urlsplit(url)
-        if url.scheme not in ("http", "https") or not parts.hostname :
-            raise InvalidURL("URL must contains http(s) scheme and hostname")
+        if parts.scheme not in ("http", "https") or not parts.hostname :
+            raise ValueError("URL must contains http(s) scheme and hostname")
         response = client.get(url)
         final_url = str(response.url)
         status_code = response.status_code
-        succes = response.is_succes
-        if not succes:
+        success = response.is_success
+        if not success:
             error_kind = f"HTTP_{status_code}"
     except (httpx.InvalidURL, ValueError) as exc:
         error_kind = type(exc).__name__
@@ -64,7 +68,7 @@ def measure_one(client :httpx.Client, url : str) -> Result:
     finally:
         elapsed = time.perf_counter() - start
 
-    return Result(url, final_url, status_code, succes, error_kind, elapsed)
+    return Result(url, final_url, status_code, success, error_kind, elapsed)
 
 def save_CSV(results : list[Result], path : Path) -> None:
     ""
@@ -77,7 +81,7 @@ def save_CSV(results : list[Result], path : Path) -> None:
 def report(results : list[Result], wall_time_s :float) -> None:
     ""
     duration = [result.duration_s for result in results]
-    successes = sum(result.succes for result in results)
+    successes = sum(result.success for result in results)
     faillures = len(results) - successes
     errors = Counter(result.error_kind for result in results if result.error_kind)
 
@@ -89,8 +93,8 @@ def report(results : list[Result], wall_time_s :float) -> None:
     print(f"Median/Request: {statistics.median(duration)}")
 
     print("\nTop 5 very slow (include faillures)\n")
-    for result in sorted(results, key= lambda item : item.duration_s, reversed=True)[:5]:
-        outcome = result.status_code if status_code is not None else result.error_kind
+    for result in sorted(results, key= lambda item : item.duration_s, reverse=True)[:5]:
+        outcome = result.status_code if result.status_code is not None else result.error_kind
         print(f"{result.duration_s:.3f} | {outcome}| {result.url}")
 
     print("\nFaillure per type\n")
@@ -126,14 +130,14 @@ def main():
             follow_redirects = True,
             headers = {"User-Agent" : USER_AGENT}
         ) as client:
-            for index, url in enumerate(urls):
+            for index, url in enumerate(urls, start=1):
                 result = measure_one(client, url)
                 outcome = result.status_code if result.status_code is not None else result.error_kind
                 print(f"[{index}/{len(urls)}]  | {outcome}  | {result.duration_s:.3f}")
                 results.append(result)
     except KeyboardInterrupt:
         interrupted = True
-        LOGGER.error("")
+        LOGGER.error("Interrupted: Saving the results already acquired.")
     wall_time_s = time.perf_counter() - start
 
     if not results:
