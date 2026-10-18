@@ -33,12 +33,19 @@ class Result:
 
 def load_urls(path : Path) -> list[str]:
     ""
+    urls = []
     with path.open(encoding="utf-8") as source:
-        urls = [
-            line.strip() for line in source if line.strip() and not line.lstrip().startswith("#")
-        ]
+        for line_index, line in enumerate(source, start=1):
+            url = line.strip()
+            if not url or url.startswith("#"):
+                continue
+            if not url_is_valid(url):
+                LOGGER.warning("Line %d: Invalid URL ignored : %s", line_index, url)
+                continue
+                
+            urls.append(url)
     if not urls:
-        raise ValueError(f"There is no URL to test in {path}.")
+        raise ValueError(f"There is no valid URL to test in {path}.")
     return urls
 
 
