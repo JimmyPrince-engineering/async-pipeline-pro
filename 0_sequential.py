@@ -4,6 +4,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 from collections import Counter
 from datetime import timezone, datetime
+from typing import Any
 import logging
 import argparse
 import time
@@ -21,7 +22,7 @@ CSV_RESULT_COLUMNS = (
     "url", "final_url", "status_code", "success", "error_kind", "error_detail", "root_cause", "duration_s"
 )
 CSV_RESUME_COLUMNS = {
-    "date_time", "request_number", "OK", "KO", "total_duration", "duration_sum", "mean", "median", "five_very_slow", "errors_count"
+    "date_time", "request_number", "OK", "KO", "total_duration", "duration_sum", "mean", "median", "interrupted"
 }
 
 
@@ -48,8 +49,7 @@ class Resume:
     duration_sum : float
     mean : float
     median : float
-    five_very_slow : list[tuple[Any]]
-    errors_count : dict[str, int]|None
+    interrupted : bool
 
 
 def get_root_cause(exc: Exception) -> str:
