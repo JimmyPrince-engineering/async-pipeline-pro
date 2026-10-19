@@ -196,10 +196,10 @@ def print_report(report : dict[str, Any]) -> None:
     ""
     print("==M0 - SEQUENTIAL BASELINE==")
     print(f"Requests: {report["requests"]} | OK (2xx): {report["successes"]} | KO: {report["faillures"]}")
-    print(f"Total duration (gross): {report["total_duration"]}")
-    print(f"Request duration sum : {report["duration_sum"]}")
-    print(f"Mean/Request: {report["mean"]} ")
-    print(f"Median/Request: {report["median"]}")
+    print(f"Total duration (gross): {report["total_duration"]:.3f}")
+    print(f"Request duration sum : {report["duration_sum"]:.3f}")
+    print(f"Mean/Request: {report["mean"]:.3f} ")
+    print(f"Median/Request: {report["median"]:.3f}")
 
     print("\nTop 5 very slow (include faillures)\n")
     for duration_s, outcome, url in report["five_very_slow"]:
