@@ -157,17 +157,11 @@ def save_CSV_result(results : list[Result], path : Path) -> None:
 
 def save_CSV_resume(resume : Resume, path : Path) -> None :
     ""
-    is_new = True
-    try:
-        with path.open("r", encoding="utf-8") as destination:
-           if  next(destination).strip():
-               is_new = True
-    except FileNotFoundError:
-        pass
+    needs_header = not path.exists() or path.starts().st_size == 0
             
     with path.open("a", newline="", encoding="utf-8") as destination:
         writer = csv.DictWriter(destination, fieldnames=CSV_RESUME_COLUMNS)
-        if not is_new:
+        if needs_header:
             writer.writeheader()
         writer.writerow(asdict(resume))
 
