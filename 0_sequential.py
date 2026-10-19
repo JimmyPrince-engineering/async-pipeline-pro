@@ -41,7 +41,7 @@ class Result:
 @dataclass(frozen=True)
 class Resume:
     ""
-    date_tim    e: str
+    date_time: str
     request_number: int
     OK : int
     KO : int
