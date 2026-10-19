@@ -28,7 +28,7 @@ CSV_RESUME_COLUMNS = (
 
 @dataclass(frozen=True)
 class Result:
-    ""
+    "represents test results"
     url : str
     final_url : str|None
     status_code : int|None
@@ -40,7 +40,7 @@ class Result:
 
 @dataclass(frozen=True)
 class Resume:
-    ""
+    "represents test resume"
     date_time: str
     request_number: int
     OK : int
@@ -53,7 +53,7 @@ class Resume:
 
 
 def get_root_cause(exc: Exception) -> str:
-    ""
+    "gets exception root cause"
     current= exc
     seen = set()
     while current.__cause__ is not None:
@@ -64,7 +64,7 @@ def get_root_cause(exc: Exception) -> str:
     return type(current).__name__
 
 def load_urls(path : Path) -> list[str]:
-    ""
+    "loads URLs from path (text file)"
     urls = []
     with path.open(encoding="utf-8") as source:
         for line_index, line in enumerate(source, start=1):
@@ -82,7 +82,7 @@ def load_urls(path : Path) -> list[str]:
 
 
 def url_is_valid(url: str) -> bool:
-    ""
+    "checks if URL is valid"
     try:
         parts = urlsplit(url)
         return (parts.scheme in ("http", "https") and bool(parts.hostname))
@@ -91,7 +91,7 @@ def url_is_valid(url: str) -> bool:
 
 
 def measure_one(client :httpx.Client, url : str) -> Result:
-    ""
+    "makes request and returns Result object "
     start = time.perf_counter()
     final_url = None
     status_code = None
@@ -132,7 +132,7 @@ def measure_one(client :httpx.Client, url : str) -> Result:
 
 
 def make_resume(report: dict[str, Any], interrupted : bool) -> Resume:
-    ""
+    "recieves report and returns Resume object"
     return Resume (
         date_time = datetime.now(timezone.utc).strftime("%Y/%m/%d %H:%M:%S"),
         request_number = report["requests"],
@@ -147,7 +147,7 @@ def make_resume(report: dict[str, Any], interrupted : bool) -> Resume:
 
 
 def save_CSV_result(results : list[Result], path : Path) -> None:
-    ""
+    "saves CSV results"
     with path.open("w", newline="", encoding="utf-8") as destination:
         writer = csv.DictWriter(destination, fieldnames=CSV_RESULT_COLUMNS)
         writer.writeheader()
@@ -156,7 +156,7 @@ def save_CSV_result(results : list[Result], path : Path) -> None:
 
 
 def save_CSV_resume(resume : Resume, path : Path) -> None :
-    ""
+    "save CSV resume"
     needs_header = not path.exists() or path.stat().st_size == 0
             
     with path.open("a", newline="\n", encoding="utf-8") as destination:
@@ -168,7 +168,7 @@ def save_CSV_resume(resume : Resume, path : Path) -> None :
 
 
 def compute_report(results : list[Result], wall_time_s :float) -> dict[Any]:
-    ""
+    "recieves results objects and computes report"
     duration = [result.duration_s for result in results]
     successes = sum(result.success for result in results)
     faillures = len(results) - successes
@@ -193,7 +193,7 @@ def compute_report(results : list[Result], wall_time_s :float) -> dict[Any]:
 
 
 def print_report(report : dict[str, Any]) -> None:
-    ""
+    "prints report"
     print("==M0 - SEQUENTIAL BASELINE==")
     print(f"Requests: {report["requests"]} | OK (2xx): {report["successes"]} | KO: {report["faillures"]}")
     print(f"Total duration (gross): {report["total_duration"]:.3f}")
@@ -215,7 +215,7 @@ def print_report(report : dict[str, Any]) -> None:
 
 
 def main():
-    ""
+    "orchestra program"
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     
     parser = argparse.ArgumentParser(description="M0 sequential HTTP Baseline")
