@@ -21,9 +21,9 @@ USER_AGENT = "AsyncPipelinePro/0.2 (personnal site monitor)"
 CSV_RESULT_COLUMNS = (
     "url", "final_url", "status_code", "success", "error_kind", "error_detail", "root_cause", "duration_s"
 )
-CSV_RESUME_COLUMNS = {
+CSV_RESUME_COLUMNS = (
     "date_time", "request_number", "OK", "KO", "total_duration", "duration_sum", "mean", "median", "interrupted"
-}
+)
 
 
 @dataclass(frozen=True)
@@ -41,7 +41,7 @@ class Result:
 @dataclass(frozen=True)
 class Resume:
     ""
-    date_time: str
+    date_tim    e: str
     request_number: int
     OK : int
     KO : int
@@ -85,7 +85,7 @@ def url_is_valid(url: str) -> bool:
     ""
     try:
         parts = urlsplit(url)
-        return (parts.scheme in ("http", "https") and parts.hostname)
+        return (parts.scheme in ("http", "https") and bool(parts.hostname))
     except ValueError:
         return False
 
@@ -131,7 +131,7 @@ def measure_one(client :httpx.Client, url : str) -> Result:
     return Result(url, final_url, status_code, success, error_kind, error_detail, root_cause, elapsed)
 
 
-def make_resume(report: dict[Any]) -> Resume:
+def make_resume(report: dict[str, Any], interrupted : bool) -> Resume:
     ""
     return Resume (
         date_time = datetime.now(timezone.utc).strftime("%Y/%m/%d %H:%M:%S"),
@@ -142,8 +142,7 @@ def make_resume(report: dict[Any]) -> Resume:
         duration_sum = report["duration_sum"],
         mean = report["mean"],
         median = report["median"],
-        five_very_slow = report["five_very_slow"],
-        errors_count = report["errors_count"] if report["errors_count"] else None,
+        interrupted = interrupted,
     )
 
 
@@ -199,7 +198,7 @@ def compute_report(results : list[Result], wall_time_s :float) -> dict[Any]:
     }
 
 
-def print_report(report : dict[Any]) -> None:
+def print_report(report : dict[str, Any]) -> None:
     ""
     print("==M0 - SEQUENTIAL BASELINE==")
     print(f"Requests: {report["requests"]} | OK (2xx): {report["successes"]} | KO: {report["faillures"]}")
@@ -226,8 +225,8 @@ def main():
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     
     parser = argparse.ArgumentParser(description="M0 sequential HTTP Baseline")
-    parser.add_argument("--urls", type=Path, default="urls.txt")
-    parser.add_argument("--output", type=Path, default=f"m0_results_{timestamp}.csv")
+    parser.add_argument("--urls", type=Path, default=Path("urls.txt"))
+    parser.add_argument("--output", type=Path, default=Path(f"m0_results_{timestamp}.csv"))
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s : %(message)s")
@@ -262,20 +261,20 @@ def main():
         return 1
 
     report = compute_report(results, wall_time_s)
+    resume = make_resume(report, interrupted)
 
     try:
+        type = "results"
+        path = args.output
+        save_CSV_result(results, path)
+        print(f"\nResults successfully saved.\n")
+        type = "resume"
         path = Path("m0_runs.csv")
-        resume = make_resume(report)
         save_CSV_resume(resume, path)
         print(f"\nResume successfully saved.\n")
+    
     except OSError as exc:
-        logging.error("Impossible to write CSV resume %s: %s", path, exc)
-
-    try:
-        save_CSV_result(results, args.output)
-        print(f"\nResults successfully saved.\n")
-    except OSError as exc:
-        logging.error("Impossible to write CSV results %s: %s", pars.output, exc)
+        logging.error("Impossible to write CSV %s %s: %s", type, path, exc)
         return 1
     finally:
         print_report(report)
