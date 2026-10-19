@@ -157,9 +157,9 @@ def save_CSV_result(results : list[Result], path : Path) -> None:
 
 def save_CSV_resume(resume : Resume, path : Path) -> None :
     ""
-    needs_header = not path.exists() or path.starts().st_size == 0
+    needs_header = not path.exists() or path.stat().st_size == 0
             
-    with path.open("a", newline="", encoding="utf-8") as destination:
+    with path.open("a", newline="\n", encoding="utf-8") as destination:
         writer = csv.DictWriter(destination, fieldnames=CSV_RESUME_COLUMNS)
         if needs_header:
             writer.writeheader()
