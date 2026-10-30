@@ -6,6 +6,9 @@ import random
 import time
 
 
+from typing import Optional
+
+
 from models import URLTask, HTMLPage
 from config import Config
 from exceptions import (
@@ -80,7 +83,7 @@ class Downloader:
                     return
                 try:
                     result = await process_item(item)
-                except DownloadTimeoutError as exc:
+                except RetryExhaustedError as exc:
                     self.stats["errors"] += 1
                     self.logger.error("%s: DownloadTimeoutError - %s", self.name, exc)
                 else:
@@ -89,6 +92,29 @@ class Downloader:
             finally:
                 self.queue_in.task_done()
 
+    async def process_with_retry(self, item) -> HTMLPage:
+        ""
+        last_error : Optional[Exception] = None
+        total_attempts : int = self.config.max_retry + 1
+
+        for attempt in range(1, total_attempts +1):
+            try:
+                return await self.process_with_retry(item)
+
+            except PipelineError as exc:
+                self.logger.warning(
+                    "%s: %d/%d attempt failed for %r -%s",
+                    self.name, attempt, total_attempts, item, exc
+                )
+                last_error = exc
+            if attempt < total_attempts:
+                await asyncio.sleep(self.config.max_retry)
+
+        assert last_error is not None
+        raise RetryExhaustedError(item=item, max_retry=attempt, last_error=last_error)
+    
+    
+    
     async def process_item(self, item : URLTask) -> HTMLPage :
         async with self.semaphore :
             try:
