@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import signal
 
 from config import Config
 from models import URLTask, HTMLPage, AnalysisResult
@@ -75,6 +76,8 @@ class Pipeline:
 
     async def run(self) -> None :
         ""
+        self._install_signal_handler()
+        
         producer_task = asyncio.create_task(self._producer.run())
         downloader_tasks = [
             asyncio.create_task(d.run())
@@ -91,7 +94,14 @@ class Pipeline:
 
         self.logger.info("Pipeline started")
 
-        await producer_task
+        try:
+            await producer_task
+        except asyncio.CancelledError :
+            self.logger.warning(
+                    "Pipeline: Producer interrupted no more new URLs, "
+                    "drainage of tasks already issued."
+            )
+        
         await self._drain_stage(self.url_queue, self.config.num_downloaders, downloader_tasks)
         await self._drain_stage(self.html_queue, self.config.num_analyzers, analyzer_tasks)
         await self._drain_stage(self.result_queue, self.config.num_savers, saver_tasks)
@@ -109,3 +119,24 @@ class Pipeline:
             await queue.put(None)
 
         await asyncio.gather(*task)
+
+
+    def _install_signal_handler(self) -> None:
+        ""
+        loop = asyncio.get_running_loop()
+
+        def _sigint_handler() -> None :
+            ""
+            self.logger.warning(
+                "Pipeline : SIGINT signal received — graceful shutdown, no more new URLs will be issued."
+            )
+
+            if self._producer_task is not None and not self._producer_task.done():
+                self._producer_task.cancel()
+
+        try:
+            loop.add_signal_handler(signal.SIGINT, _sigint_handler)
+        except NotImplementedError :
+            self.logger.debug(
+                "Pipeline : add_signal_handler isn\'t available on this platform (eg : Window)."
+            )
