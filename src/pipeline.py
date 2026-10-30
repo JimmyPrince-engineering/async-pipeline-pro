@@ -89,10 +89,14 @@ class Pipeline:
 
         self._producer_task : Optional[asyncio.Task] = None
         self._monitor_task : Optional[asyncio.Task] = None
+        self._started_time : float = 0.0
+        self._duration : float = 0.0
+        
 
     async def run(self) -> None :
         ""
         self._install_signal_handler()
+        self._started_time = time.monotonic()
         
         self._producer_task = asyncio.create_task(self._producer.run())
         downloader_tasks = [
@@ -111,7 +115,11 @@ class Pipeline:
         self._monitor_task = asyncio.create_task(self._monitor.run())
 
         self.ready_event.set()
-        self.logger.info("Pipeline started")
+        self.logger.info(
+            "Pipeline : started — %d urls, %d Downloaders, %d Analyzers, %d Savers.",
+            self.config.num_urls, self.config.num_downloaders, self.config.num_analyzers,
+            self.config.num_savers
+        )
 
         try:
             try:
@@ -130,6 +138,8 @@ class Pipeline:
             self.shutdown_event.set()
             if self._monitor_task is not None:
                 await self._monitor_task
+        self._duration = time.monotonic() - self._started_time
+        self._print_summary()
     
 
     async def _drain_stage(
@@ -166,3 +176,20 @@ class Pipeline:
             self.logger.debug(
                 "Pipeline : add_signal_handler isn\'t available on this platform (eg : Window)."
             )
+    
+    def _print_summary(self) -> None :
+        ""
+        saved = self.stats.get("saved", 0)
+        errors = self.stats.get("errors", 0)
+        total = saved + errors
+        error_rate = (errors/saved * 100) if saved >0 else 0.0 
+        throughput = total/self._duration if self._duration > 0 else 0.0
+
+        self.logger.info(
+            "Pipeline : FINAL SUMMARING — delay = : %.2fs | issued = %d  downloaded = %d\
+            analysed = %d  saved = %d  failed = %d |"
+            "total processed = %d/%d | fail rate = %.1fs%% | average flow = %.1fs items/sec ",
+            self._duration, self.stats.get("produced", 0), self.stats.get("downloaded", 0),
+            self.stats.get("analyzed", 0), self.stats.get("saved", 0), self.stats.get("errors", 0),
+            total, self.config.num_urls, error_rate, throughput
+        )
