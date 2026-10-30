@@ -17,6 +17,8 @@ class Pipeline:
         self.url_queue : asyncio.Queue[URLTask|None] = asyncio.Queue(maxsize=config.queue_size)
         self.html_queue : asyncio.Queue[HTMLPage|None] = asyncio.Queue(maxsize=config.queue_size)
 
+        self.semaphore : asyncio.Semaphore = asyncio.Semaphore(config.max_connections)
+
         self.stats : dict[str, int] = {
             "produced" : 0,
             "downloaded" : 0,
@@ -40,6 +42,7 @@ class Pipeline:
                 self.stats,
                 config,
                 logger.getChild(f"Downloader.{i}"),
+                semaphore = self.semaphore,
         ) for i in range(1, config.num_downloaders)
         ]
 

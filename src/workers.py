@@ -60,7 +60,8 @@ class Downloader:
         queue_out : asyncio.Queue[HTMLPage],
         stats : dict[str, int],
         config : Config,
-        logger : logging.Logger
+        logger : logging.Logger,
+        semaphore : asyncio.Semaphore
     ) -> None:
         self.name = name
         self.queue_in = queue_in
@@ -68,6 +69,7 @@ class Downloader:
         self.stats = stats
         self.config = config
         self.logger = logger
+        self.semaphore = semaphore
 
     async def run(self) -> None :
         while True:
@@ -77,7 +79,7 @@ class Downloader:
                     self.logger.info("%s sentinel received, task completed", self.name)
                     return
                 try:
-                    result = await simulate_download(item, self.config)
+                    result = await process_item(item)
                 except DownloadTimeoutError as exc:
                     self.stats["errors"] += 1
                     self.logger.error("%s: DownloadTimeoutError - %s", self.name, exc)
@@ -86,3 +88,7 @@ class Downloader:
                     await self.queue_out.put(result)
             finally:
                 self.queue_in.task_done()
+
+    async def process_item(self, item : URLTask) -> HTMLPage :
+        async with self.semaphore :
+            return await simulate_download(item, self.config)
