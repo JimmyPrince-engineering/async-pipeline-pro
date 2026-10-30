@@ -163,11 +163,13 @@ class Saver(Worker):
     stat_key = "saved"
 
     def __init__(self, *args : Any, database : List[str, int],
-                 **kwargs : Any
+        db_lock : asyncio.Lock, **kwargs : Any
     ) -> None :
         super().__init__(*args, **kwargs)
         self.database = database
+        self.db_lock = db_lock
 
     async def process_item(self, item : AnalysisResult) -> None :
         ""
-        await simulate_save(item, self.database, self.config)
+        async with self.db_lock:
+            await simulate_save(item, self.database, self.config)
