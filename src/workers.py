@@ -108,11 +108,16 @@ class Downloader:
                 )
                 last_error = exc
             if attempt < total_attempts:
-                await asyncio.sleep(self.config.max_retry)
+                await asyncio.sleep(self._computer_backoff(attempt))
 
         assert last_error is not None
         raise RetryExhaustedError(item=item, max_retry=attempt, last_error=last_error)
-    
+
+    def _computer_backoff(self, attempt : int) -> float:
+
+        delay = (self.config.backoff_base * self.config.backoff_multiplier)** (attempt - 1)
+        delay = min(delay, self.config.backoff_max)
+        return delay + random.uniform(0, self.config.backoff_jitter)
     
     
     async def process_item(self, item : URLTask) -> HTMLPage :
