@@ -6,8 +6,8 @@ import time
 
 
 from config import Config
-from exceptions import DownloadError, AnalysisError
-from models import URLTask, HTMLPage
+from exceptions import DownloadError, AnalysisError, DatabaseError
+from models import URLTask, HTMLPage, AnalysisResult
 
 
 def _roll_failure(rate : float) -> bool :
@@ -40,3 +40,14 @@ def analyze_text(page : HTMLPage, config : Config) -> int :
         raise AnalysisError(f"Échec simulé de l'analyse pour task_id={page.task_id}")
 
     return len(page.content.split())
+
+async def simulate_save(result : AnalysisResult, database : list[AnalysisResult], config : Config) -> None:
+    ""
+    latency = random.uniform(config.save_latency_min, config.save_latency_max)
+    await asyncio.sleep(latency)
+    
+
+    if _roll_failure(config.save_fail_rate):
+        raise DatabaseError(f"Échec simulé de l'écriture pour task_id={result.task_id}")
+    
+    database.append(result)

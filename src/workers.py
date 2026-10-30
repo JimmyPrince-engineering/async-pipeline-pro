@@ -16,9 +16,10 @@ from exceptions import (
 PipelineError,
 DownloadTimeoutError,
 AnalysisError,
+DatabaseError,
 RetryExhaustedError,
 )
-from simulations import simulate_download, analyze_text
+from simulations import simulate_download, analyze_text, simulate_save
 
 class Producer:
     ""
@@ -157,3 +158,16 @@ class Analyzer(Worker):
             len_content = word_count,
             analyzed_at = time.monotonic()
         )
+
+class Saver(Worker):
+    stat_key = "saved"
+
+    def __init__(self, *args : Any, database : List[str, int],
+                 **kwargs : Any
+    ) -> None :
+        super().__init__(*args, **kwargs)
+        self.database = database
+
+    async def process_item(self, item : AnalysisResult) -> None :
+        ""
+        await simulate_save(item, self.database, self.config)
