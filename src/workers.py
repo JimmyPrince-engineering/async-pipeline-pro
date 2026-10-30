@@ -6,8 +6,13 @@ import random
 import time
 
 
-from models import URLTask
+from models import URLTask, HTMLPage
 from config import Config
+from exceptions import (
+PipelineError,
+DownloadTimeoutError,
+)
+from simulations import simulate_download
 
 class Producer:
     ""
@@ -42,3 +47,42 @@ class Producer:
                 delay = random.uniform(self.config.producer_interval_min, self.config.producer_interval_max)
                 await asyncio.sleep(delay)
         self.logger.info("Producer: %d URL issued, work completed", task_id)
+
+
+
+class Downloader:
+    ""
+    stat_key : str = "downloaded"
+    def __init__(
+        self,
+        name : str ,
+        queue_in : asyncio.Queue[URLTask],
+        queue_out : asyncio.Queue[HTMLPage],
+        stats : dict[str, int],
+        config : Config,
+        logger : logging.Logger
+    ) -> None:
+        self.name = name
+        self.queue_in = queue_in
+        self.queue_out = queue_out
+        self.stats = stats
+        self.config = config
+        self.logger = logger
+
+    async def run(self) -> None :
+        while True:
+            try:
+                item = await self.queue_in.get()
+                if item is None:
+                    self.logger.info("%s sentinel received, task completed", self.name)
+                    return
+                try:
+                    result = await simulate_download(item, self.config)
+                except DownloadTimeoutError as exc:
+                    self.stats["errors"] += 1
+                    self.logger.error("%s: DownloadTimeoutError - %s", self.name, exc)
+                else:
+                    self.stats[self.stat_key] += 1
+                    await self.queue_out.put(result)
+            finally:
+                self.queue_in.task_done()
