@@ -91,4 +91,9 @@ class Downloader:
 
     async def process_item(self, item : URLTask) -> HTMLPage :
         async with self.semaphore :
-            return await simulate_download(item, self.config)
+            try:
+                return await asyncio.wait_for(simulate_download(item, self.config), timeout = self.config.timeout_seconds)
+            except asyncio.TimeoutError as exc:
+                raise DownloadTimeoutError(
+                  f"{item.self.url!r} download beyond {self.config.timeout_seconds} s."  
+                )
