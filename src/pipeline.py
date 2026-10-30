@@ -34,7 +34,7 @@ class Pipeline:
             "errors" : 0,
         }
 
-        self.databse : list[AnalysisResult] = []
+        self.database : list[AnalysisResult] = []
 
 
         self._producer = Producer(
@@ -129,6 +129,7 @@ class Pipeline:
                         "Pipeline: Producer interrupted no more new URLs, "
                         "drainage of tasks already issued."
                 )
+            
         
             await self._drain_stage(self.url_queue, self.config.num_downloaders, downloader_tasks)
             await self._drain_stage(self.html_queue, self.config.num_analyzers, analyzer_tasks)

@@ -21,14 +21,14 @@ class RetryExhaustedError(PipelineError):
     def __init__(
         self,
         item,
-        max_retry,
+        attempt,
         last_error,
     ):
         self.item : object = item
-        self.attempts : int = attempts
+        self.attempt : int = attempt
         self.last_error : PipelineError = last_error 
         
-        super().init(
-            f"Abandonment after {self.attempts} of {self.item!r} \
+        super().__init__(
+            f"Abandonment after {self.attempt} of {self.item!r} \
             {type(self.last_error).__name__} : {self.last_error!r} "
         )

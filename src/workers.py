@@ -84,7 +84,7 @@ class Worker(ABC):
                     self.logger.info("%s sentinel received, task completed", self.name)
                     return
                 try:
-                    result = await _process_with_retry(item)
+                    result = await self._process_with_retry(item)
                 except RetryExhaustedError as exc:
                     self.stats["errors"] += 1
                     self.logger.error("%s: definitive abbandonment - %s", self.name, exc)
@@ -102,7 +102,7 @@ class Worker(ABC):
 
         for attempt in range(1, total_attempts +1):
             try:
-                return await self.process_with_retry(item)
+                return await self.process_item(item)
 
             except PipelineError as exc:
                 self.logger.warning(
@@ -114,7 +114,7 @@ class Worker(ABC):
                 await asyncio.sleep(self._computer_backoff(attempt))
 
         assert last_error is not None
-        raise RetryExhaustedError(item=item, max_retry=attempt, last_error=last_error)
+        raise RetryExhaustedError(item=item, attempt=attempt, last_error=last_error)
 
     def _computer_backoff(self, attempt : int) -> float:
 
