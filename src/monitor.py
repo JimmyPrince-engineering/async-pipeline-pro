@@ -46,7 +46,7 @@ class Monitor:
             except asyncio.TimeoutError :
                 pass
 
-        self.logger.info("Monitor stopped (shutdown_event lévé). ")
+        self.logger.info("Monitor stopped (shutdown_event lifted). ")
         
     def _snapshoot(self) -> dict [str, int|float] :
         ""

@@ -19,9 +19,9 @@ async def simulate_download(task : URLTask, config : Config ) -> HTMLPage:
     await asyncio.sleep(latency)
 
     if _roll_failure(config.download_fail_rate):
-        raise DownloadError(f"Échec simulé du téléchargement de {task.url!r}")
+        raise DownloadError(f"Download simulate faillure of {task.url!r}")
     
-    content = f"<html><body>Contenu simulé pour {task.url} (task_id={task.task_id})</body></html>"
+    content = f"<html><body>Content simulate for {task.url} (task_id={task.task_id})</body></html>"
     
     return HTMLPage(
         task_id = task.task_id,
@@ -37,7 +37,7 @@ def analyze_text(page : HTMLPage, config : Config) -> int :
     time.sleep(latency)
 
     if _roll_failure(config.analysis_fail_rate):
-        raise AnalysisError(f"Échec simulé de l'analyse pour task_id={page.task_id}")
+        raise AnalysisError(f"Analysis simulate faillure for task_id={page.task_id}")
 
     return len(page.content.split())
 
@@ -48,6 +48,6 @@ async def simulate_save(result : AnalysisResult, database : list[AnalysisResult]
     
 
     if _roll_failure(config.save_fail_rate):
-        raise DatabaseError(f"Échec simulé de l'écriture pour task_id={result.task_id}")
+        raise DatabaseError(f"Save simulate faillure for task_id={result.task_id}")
     
     database.append(result)
