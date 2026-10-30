@@ -6,7 +6,8 @@ import random
 import time
 
 
-from typing import Optional
+from typing import Optional, Any
+from abc import ABC , abstractmethod
 
 
 from models import URLTask, HTMLPage
@@ -53,18 +54,17 @@ class Producer:
 
 
 
-class Downloader:
+class Worker(ABC):
     ""
-    stat_key : str = "downloaded"
+    stat_key : str
     def __init__(
         self,
         name : str ,
-        queue_in : asyncio.Queue[URLTask],
-        queue_out : asyncio.Queue[HTMLPage],
+        queue_in : asyncio.Queue[Any],
+        queue_out : Optional[asyncio.Queue[Any]],
         stats : dict[str, int],
         config : Config,
-        logger : logging.Logger,
-        semaphore : asyncio.Semaphore
+        logger : logging.Logger
     ) -> None:
         self.name = name
         self.queue_in = queue_in
@@ -72,7 +72,6 @@ class Downloader:
         self.stats = stats
         self.config = config
         self.logger = logger
-        self.semaphore = semaphore
 
     async def run(self) -> None :
         while True:
@@ -82,17 +81,18 @@ class Downloader:
                     self.logger.info("%s sentinel received, task completed", self.name)
                     return
                 try:
-                    result = await process_item(item)
+                    result = await _process_with_retry(item)
                 except RetryExhaustedError as exc:
                     self.stats["errors"] += 1
-                    self.logger.error("%s: DownloadTimeoutError - %s", self.name, exc)
+                    self.logger.error("%s: definitive abbandonment - %s", self.name, exc)
                 else:
                     self.stats[self.stat_key] += 1
-                    await self.queue_out.put(result)
+                    if self.queue_out is not None:
+                        await self.queue_out.put(result)
             finally:
                 self.queue_in.task_done()
 
-    async def process_with_retry(self, item) -> HTMLPage:
+    async def _process_with_retry(self, item) -> HTMLPage:
         ""
         last_error : Optional[Exception] = None
         total_attempts : int = self.config.max_retry + 1
@@ -119,6 +119,19 @@ class Downloader:
         delay = min(delay, self.config.backoff_max)
         return delay + random.uniform(0, self.config.backoff_jitter)
     
+    @abstractmethod
+    def process_item(self):
+        ""
+
+
+
+class Downloader(Worker):
+    ""
+    stat_key = "downloaded"
+
+    def __init__(self, *args : Any, semaphore : asyncio.semaphore, **kwargs : Any) -> None :
+        super().__init__(*args, **kwargs)
+        self.semaphore = semaphore
     
     async def process_item(self, item : URLTask) -> HTMLPage :
         async with self.semaphore :
