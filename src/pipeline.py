@@ -14,8 +14,8 @@ class Pipeline:
         self.config = config
         self.logger = logger.getChild("Pipeline")
 
-        self.url_queue : asyncio.Queue[URLTask|None] = asyncio.Queue()
-        self.html_queue : asyncio.Queue[HTMLPage|None] = asyncio.Queue()
+        self.url_queue : asyncio.Queue[URLTask|None] = asyncio.Queue(maxsize=config.queue_size)
+        self.html_queue : asyncio.Queue[HTMLPage|None] = asyncio.Queue(maxsize=config.queue_size)
 
         self.stats : dict[str, int] = {
             "produced" : 0,
@@ -32,13 +32,13 @@ class Pipeline:
             logger.getChild("Producer"),
             config,
         )
-        self._downloader = Downloader(
+        self._downloaders = Downloader(
                 f"Downloader",
                 self.url_queue,
                 self.html_queue,
                 self.stats,
                 config,
-                logger.getChild(f"Downloader.{i}"),
+                logger.getChild(f"Downloader"),
         )
 
     async def run(self) -> None :
