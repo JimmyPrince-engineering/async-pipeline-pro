@@ -92,10 +92,20 @@ class Pipeline:
         self.logger.info("Pipeline started")
 
         await producer_task
-        self.url_queue.join()
-        self.url_queue.put(None)
+        await self._drain_stage(self.url_queue, self.config.num_downloaders, downloader_tasks)
+        await self._drain_stage(self.html_queue, self.config.num_analyzers, analyzer_tasks)
+        await self._drain_stage(self.result_queue, self.config.num_savers, saver_tasks)
 
-        await ayncio.gather(*downloader_tasks)
-        self.html_queue.join()
-        for _ in range(config.num_downloaders):
-            self.html_queue.put(None)
+    async def _drain_stage(
+        self,
+        queue : asyncio.Queue,
+        num_sentinels : int,
+        task : list[asyncio.Task],
+    ) -> None :
+        ""
+        await queue.join()
+
+        for _ in range(num_sentinels):
+            await queue.put(None)
+
+        await asyncio.gather(*task)
