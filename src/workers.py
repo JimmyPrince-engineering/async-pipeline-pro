@@ -10,13 +10,15 @@ from typing import Optional, Any
 from abc import ABC , abstractmethod
 
 
-from models import URLTask, HTMLPage
+from models import URLTask, HTMLPage, AnalysisResult
 from config import Config
 from exceptions import (
 PipelineError,
 DownloadTimeoutError,
+AnalysisError,
+RetryExhaustedError,
 )
-from simulations import simulate_download
+from simulations import simulate_download, analyze_text
 
 class Producer:
     ""
@@ -141,3 +143,17 @@ class Downloader(Worker):
                 raise DownloadTimeoutError(
                   f"{item.self.url!r} download beyond {self.config.timeout_seconds} s."  
                 )
+
+class Analyzer(Worker):
+    stat_key = "analyzed"
+
+    async def process_item(self, item: HTMLPage) -> AnalysisResult:
+        ""
+        loop = asyncio.get_running_loop()
+        word_count = await loop.run_in_executor(None, analyze_text, item, self.config)
+        return AnalysisResult (
+            task_id = item.task_id,
+            url = item.url,
+            len_content = word_count,
+            analyzed_at = time.monotonic()
+        )
