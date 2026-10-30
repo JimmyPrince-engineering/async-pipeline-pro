@@ -3,10 +3,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import signal
+import time
 
 from config import Config
 from models import URLTask, HTMLPage, AnalysisResult
 from workers import Producer, Downloader, Analyzer, Saver
+from monitor import Monitor
 
 class Pipeline:
     ""
@@ -21,6 +23,8 @@ class Pipeline:
 
         self.semaphore : asyncio.Semaphore = asyncio.Semaphore(config.max_connections)
         self.db_lock : asyncio.Lock = asyncio.Lock()
+        self.ready_event : asyncio.Event = asyncio.Event()
+        self.shutdown_event : asyncio.Event = asyncio.Event()
 
         self.stats : dict[str, int] = {
             "produced" : 0,
@@ -74,11 +78,23 @@ class Pipeline:
             db_lock = self.db_lock,) for i in range(1, config.num_savers + 1)
         ]
 
+        self._monitor = Monitor(
+            self.stats,
+            {"url" : self.url_queue, "html" : self.html_queue, "result" : self.result_queue},
+            self.ready_event,
+            self.shutdown_event,
+            logger.getChild("Monitor"),
+            config,
+        )
+
+        self._producer_task : Optional[asyncio.Task] = None
+        self._monitor_task : Optional[asyncio.Task] = None
+
     async def run(self) -> None :
         ""
         self._install_signal_handler()
         
-        producer_task = asyncio.create_task(self._producer.run())
+        self._producer_task = asyncio.create_task(self._producer.run())
         downloader_tasks = [
             asyncio.create_task(d.run())
             for d in self._downloaders
@@ -92,19 +108,29 @@ class Pipeline:
             for s in self._savers
         ]
 
+        self._monitor_task = asyncio.create_task(self._monitor.run())
+
+        self.ready_event.set()
         self.logger.info("Pipeline started")
 
         try:
-            await producer_task
-        except asyncio.CancelledError :
-            self.logger.warning(
-                    "Pipeline: Producer interrupted no more new URLs, "
-                    "drainage of tasks already issued."
-            )
+            try:
+                await self._producer_task
+            except asyncio.CancelledError :
+                self.logger.warning(
+                        "Pipeline: Producer interrupted no more new URLs, "
+                        "drainage of tasks already issued."
+                )
         
-        await self._drain_stage(self.url_queue, self.config.num_downloaders, downloader_tasks)
-        await self._drain_stage(self.html_queue, self.config.num_analyzers, analyzer_tasks)
-        await self._drain_stage(self.result_queue, self.config.num_savers, saver_tasks)
+            await self._drain_stage(self.url_queue, self.config.num_downloaders, downloader_tasks)
+            await self._drain_stage(self.html_queue, self.config.num_analyzers, analyzer_tasks)
+            await self._drain_stage(self.result_queue, self.config.num_savers, saver_tasks)
+        
+        finally:
+            self.shutdown_event.set()
+            if self._monitor_task is not None:
+                await self._monitor_task
+    
 
     async def _drain_stage(
         self,
