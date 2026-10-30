@@ -32,14 +32,16 @@ class Pipeline:
             logger.getChild("Producer"),
             config,
         )
-        self._downloaders = Downloader(
-                f"Downloader",
+        self._downloaders = [
+        Downloader(
+                f"Downloader_{i}",
                 self.url_queue,
                 self.html_queue,
                 self.stats,
                 config,
-                logger.getChild(f"Downloader"),
-        )
+                logger.getChild(f"Downloader.{i}"),
+        ) for i in range(1, config.num_downloaders)
+        ]
 
     async def run(self) -> None :
         ""
@@ -52,6 +54,7 @@ class Pipeline:
         self.url_queue.join()
         self.url_queue.put(None)
 
-        await downloader_task
+        await ayncio.gather(*downloader_task)
         self.html_queue.join()
-        self.html_queue.put(None)
+        for _ in range(config.num_downloaders):
+            self.html_queue.put(None)
