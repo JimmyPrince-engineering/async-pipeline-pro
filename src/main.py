@@ -23,7 +23,7 @@ def setup_logging(level : str) -> logging.Logger :
     return logger
 
 
-def _parse_args() -> argparse.NameSpace :
+def _parse_args() -> argparse.Namespace :
     ""
     parser = argparse.ArgumentParser(
         description = "AsyncPipeline Pro — simulate pipeline producer/consumer."
