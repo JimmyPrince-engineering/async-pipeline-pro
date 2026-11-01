@@ -52,7 +52,7 @@ class Pipeline:
                 config,
                 logger.getChild(f"Downloader.{i}"),
                 semaphore = self.semaphore,
-        ) for i in range(1, config.num_downloaders)
+        ) for i in range(1, config.num_downloaders + 1)
         ]
 
         self._analyzers = [
