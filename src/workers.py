@@ -28,7 +28,7 @@ class Producer:
         self,
         stats : dict[str, int],
         queue_out : asyncio.Queue[URLTask],
-        logger : logging.logger,
+        logger : logging.Logger,
         config : Config
     ) -> None :
         self.stats = stats
@@ -137,12 +137,12 @@ class Downloader(Worker):
         self.semaphore = semaphore
     
     async def process_item(self, item : URLTask) -> HTMLPage :
-        async with self.semaphore :
+        async with self.Semaphore :
             try:
                 return await asyncio.wait_for(simulate_download(item, self.config), timeout = self.config.timeout_seconds)
             except asyncio.TimeoutError as exc:
                 raise DownloadTimeoutError(
-                  f"{item.self.url!r} download beyond {self.config.timeout_seconds} s."  
+                  f"{item.url!r} download beyond {self.config.timeout_seconds} s."  
                 )
 
 class Analyzer(Worker):
@@ -162,7 +162,7 @@ class Analyzer(Worker):
 class Saver(Worker):
     stat_key = "saved"
 
-    def __init__(self, *args : Any, database : List[str, int],
+    def __init__(self, *args : Any, database : List[AnalysisResult],
         db_lock : asyncio.Lock, **kwargs : Any
     ) -> None :
         super().__init__(*args, **kwargs)
