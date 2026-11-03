@@ -185,7 +185,7 @@ class Pipeline:
         saved = self.stats.get("saved", 0)
         errors = self.stats.get("errors", 0)
         total = saved + errors
-        error_rate = (errors/saved * 100) if saved >0 else 0.0 
+        error_rate = (errors/total * 100) if total >0 else 0.0 
         throughput = total/self._duration if self._duration > 0 else 0.0
 
         self.logger.info(
