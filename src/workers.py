@@ -6,8 +6,7 @@ import random
 import time
 
 
-from typing import Optional, Any
-from abc import ABC , abstractmethod
+from typing import Any, Generic, TypeVar
 
 
 from models import URLTask, HTMLPage, AnalysisResult
@@ -20,6 +19,10 @@ DatabaseError,
 RetryExhaustedError,
 )
 from simulations import simulate_download, analyze_text, simulate_save
+
+InputT = TypeVar("InputT")
+OutputT = TypeVar("OutputT")
+
 
 class Producer:
     ""
@@ -57,14 +60,14 @@ class Producer:
 
 
 
-class Worker(ABC):
+class Worker(Generic[InputT, OutputT]):
     ""
     stat_key : str
     def __init__(
         self,
         name : str ,
-        queue_in : asyncio.Queue[Any],
-        queue_out : Optional[asyncio.Queue[Any]],
+        queue_in : asyncio.Queue[InputT],
+        queue_out : asyncio.Queue[OutputT]|None,
         stats : dict[str, int],
         config : Config,
         logger : logging.Logger
@@ -95,9 +98,9 @@ class Worker(ABC):
             finally:
                 self.queue_in.task_done()
 
-    async def _process_with_retry(self, item) -> Any:
+    async def _process_with_retry(self, item: InputT) -> OutputT:
         ""
-        last_error : Optional[Exception] = None
+        last_error : Exception|None = None
         total_attempts : int = self.config.max_retry + 1
 
         for attempt in range(1, total_attempts +1):
@@ -121,14 +124,15 @@ class Worker(ABC):
         delay = self.config.backoff_base * (self.config.backoff_multiplier** (attempt - 1))
         delay = min(delay, self.config.backoff_max)
         return delay + random.uniform(0, self.config.backoff_jitter)
+
     
-    @abstractmethod
-    def process_item(self) Any|None:
+    def process_item(self, item: InputT) OutputT|None:
         ""
+        raise NotImplementedError()
 
 
 
-class Downloader(Worker):
+class Downloader(Worker[URLTask, HTMLPage]):
     ""
     stat_key = "downloaded"
 
@@ -145,7 +149,7 @@ class Downloader(Worker):
                   f"{item.url!r} download beyond {self.config.timeout_seconds} s."  
                 )
 
-class Analyzer(Worker):
+class Analyzer(Worker[HTMLPage, AnalysisResult]):
     stat_key = "analyzed"
 
     async def process_item(self, item: HTMLPage) -> AnalysisResult:
@@ -159,7 +163,7 @@ class Analyzer(Worker):
             analyzed_at = time.monotonic()
         )
 
-class Saver(Worker):
+class Saver(Worker[AnalysisResult, None]):
     stat_key = "saved"
 
     def __init__(self, *args : Any, database : list[AnalysisResult],
