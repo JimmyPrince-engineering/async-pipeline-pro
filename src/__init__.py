@@ -7,7 +7,7 @@ DownloadError,
 DownloadTimeoutError,
 AnalysisError,
 DatabaseError,
-RetyExhaustedError
+RetryExhaustedError
 )
 from pipeline import Pipeline
 
@@ -24,5 +24,5 @@ __all__ = [
     "DownloadTimeoutError",
     "AnalysisError",
     "DatabaseError",
-    "RetyExhaustedError",
+    "RetryExhaustedError",
 ]
