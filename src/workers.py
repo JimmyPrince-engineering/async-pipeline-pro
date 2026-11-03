@@ -126,7 +126,7 @@ class Worker(Generic[InputT, OutputT]):
         return delay + random.uniform(0, self.config.backoff_jitter)
 
     
-    def process_item(self, item: InputT) OutputT|None:
+    def process_item(self, item: InputT) -> OutputT|None:
         ""
         raise NotImplementedError()
 
