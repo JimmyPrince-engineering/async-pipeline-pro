@@ -5,6 +5,8 @@ import logging
 import signal
 import time
 
+from typing import Optional
+
 from config import Config
 from models import URLTask, HTMLPage, AnalysisResult
 from workers import Producer, Downloader, Analyzer, Saver

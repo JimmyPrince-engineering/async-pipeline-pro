@@ -95,7 +95,7 @@ class Worker(ABC):
             finally:
                 self.queue_in.task_done()
 
-    async def _process_with_retry(self, item) -> HTMLPage:
+    async def _process_with_retry(self, item) -> Any:
         ""
         last_error : Optional[Exception] = None
         total_attempts : int = self.config.max_retry + 1
@@ -123,7 +123,7 @@ class Worker(ABC):
         return delay + random.uniform(0, self.config.backoff_jitter)
     
     @abstractmethod
-    def process_item(self):
+    def process_item(self) Any|None:
         ""
 
 
@@ -162,7 +162,7 @@ class Analyzer(Worker):
 class Saver(Worker):
     stat_key = "saved"
 
-    def __init__(self, *args : Any, database : List[AnalysisResult],
+    def __init__(self, *args : Any, database : list[AnalysisResult],
         db_lock : asyncio.Lock, **kwargs : Any
     ) -> None :
         super().__init__(*args, **kwargs)
