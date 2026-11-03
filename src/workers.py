@@ -5,7 +5,7 @@ import logging
 import random
 import time
 
-
+from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar
 
 
@@ -60,7 +60,7 @@ class Producer:
 
 
 
-class Worker(Generic[InputT, OutputT]):
+class Worker(ABC, Generic[InputT, OutputT]):
     ""
     stat_key : str
     def __init__(
@@ -125,10 +125,9 @@ class Worker(Generic[InputT, OutputT]):
         delay = min(delay, self.config.backoff_max)
         return delay + random.uniform(0, self.config.backoff_jitter)
 
-    
-    def process_item(self, item: InputT) -> OutputT|None:
+    @abstractmethod
+    async def process_item(self, item: InputT) -> OutputT|None:
         ""
-        raise NotImplementedError()
 
 
 
