@@ -118,7 +118,7 @@ class Worker(ABC):
 
     def _computer_backoff(self, attempt : int) -> float:
 
-        delay = (self.config.backoff_base * self.config.backoff_multiplier)** (attempt - 1)
+        delay = self.config.backoff_base * (self.config.backoff_multiplier** (attempt - 1))
         delay = min(delay, self.config.backoff_max)
         return delay + random.uniform(0, self.config.backoff_jitter)
     
