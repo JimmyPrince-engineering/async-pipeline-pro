@@ -132,12 +132,12 @@ class Downloader(Worker):
     ""
     stat_key = "downloaded"
 
-    def __init__(self, *args : Any, semaphore : asyncio.semaphore, **kwargs : Any) -> None :
+    def __init__(self, *args : Any, semaphore : asyncio.Semaphore, **kwargs : Any) -> None :
         super().__init__(*args, **kwargs)
         self.semaphore = semaphore
     
     async def process_item(self, item : URLTask) -> HTMLPage :
-        async with self.Semaphore :
+        async with self.semaphore :
             try:
                 return await asyncio.wait_for(simulate_download(item, self.config), timeout = self.config.timeout_seconds)
             except asyncio.TimeoutError as exc:
