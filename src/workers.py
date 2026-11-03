@@ -78,8 +78,8 @@ class Worker(ABC):
 
     async def run(self) -> None :
         while True:
+            item = await self.queue_in.get()
             try:
-                item = await self.queue_in.get()
                 if item is None:
                     self.logger.info("%s sentinel received, task completed", self.name)
                     return
