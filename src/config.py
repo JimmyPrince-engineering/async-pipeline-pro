@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import math
+
 @dataclass(frozen=True)
 class Config:
     ''
@@ -32,6 +34,42 @@ class Config:
     log_level: str = "INFO"
 
     def __post_init__(self):
+        ""
+
+        numeric_fields = {
+        "producer_interval_min": self.producer_interval_min,
+        "producer_interval_max": self.producer_interval_max,
+        "timeout_seconds": self.timeout_seconds,
+        "backoff_base": self.backoff_base,
+        "backoff_multiplier": self.backoff_multiplier,
+        "backoff_max": self.backoff_max,
+        "backoff_jitter": self.backoff_jitter,
+        "monitor_interval": self.monitor_interval,
+        "download_fail_rate": self.download_fail_rate,
+        "analysis_fail_rate": self.analysis_fail_rate,
+        "save_fail_rate": self.save_fail_rate,
+        "download_latency_min": self.download_latency_min,
+        "download_latency_max": self.download_latency_max,
+        "analysis_latency_min": self.analysis_latency_min,
+        "analysis_latency_max": self.analysis_latency_max,
+        "save_latency_min": self.save_latency_min,
+        "save_latency_max": self.save_latency_max,
+    }
+        print(numeric_fields)
+
+        for field_name, value in numeric_fields.items():
+
+            if type(value) not in (int, float):
+                raise ValueError(
+                    f"{field_name} doit être un nombre, "
+                    f"reçu {value!r}"
+                )
+
+            if not math.isfinite(value):
+                raise ValueError(
+                    f"{field_name} doit être un nombre fini, "
+                    f"reçu {value!r}"
+                )
         
         positif_ints = {
             "num_urls" : self.num_urls,
@@ -43,7 +81,7 @@ class Config:
         }
 
         for field_name, value in positif_ints.items():
-            if value <= 0 or type(value) is not int:
+            if type(value) is not int or value <=0 :
                 raise ValueError(
                     f"{field_name} doit être un entier supérieur à 0,"
                     f" réçu {value!r}"
@@ -59,7 +97,7 @@ class Config:
             if value <= 0 :
                 raise ValueError(f"{field_name} doit être un entier strictement positif, réçu {value!r} ")
             
-        if self.max_retry < 0 or type(self.max_retry) is not int :
+        if type(self.max_retry) is not int or self.max_retry < 0 :
             raise ValueError("max_retry doit être un entier positif")
 
         rates = {
@@ -73,14 +111,14 @@ class Config:
                 raise ValueError(f"{field_name} doit être entre 0.0 et 1.0, réçu {value!r} ")
 
         if self.backoff_multiplier < 1.0:
-            raise ValueError(f"backoff_multiplier doit ≥ 1.0, réçu {value!r} ")
+            raise ValueError(f"backoff_multiplier doit ≥ 1.0, réçu {self.backoff_multiplier!r} ")
 
 
         if self.backoff_max < self.backoff_base:
             raise ValueError(f"backoff_max {self.backoff_max!r} doit être supérieur à  backoff_base {self.backoff_base!r} ")
 
-        if self.backoff_jitter <= 0:
-            raise ValueError(f"backoff_jitter doit être strictement positif, réçu {self.backoff_jitter!r} ")
+        if self.backoff_jitter < 0:
+            raise ValueError(f"backoff_jitter doit être supérieur à zéro, réçu {self.backoff_jitter!r} ")
 
         intervals = {
             "producer" : (self.producer_interval_min, self.producer_interval_max),
@@ -99,3 +137,5 @@ class Config:
         
         if self.log_level not in valid_levels:
             raise ValueError(f"log_level doit être l'un de {sorted(valid_levels)}, réçu {self.log_level!r} ")
+
+Config()
