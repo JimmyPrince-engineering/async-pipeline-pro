@@ -55,7 +55,6 @@ class Config:
         "save_latency_min": self.save_latency_min,
         "save_latency_max": self.save_latency_max,
     }
-        print(numeric_fields)
 
         for field_name, value in numeric_fields.items():
 
@@ -137,5 +136,3 @@ class Config:
         
         if self.log_level not in valid_levels:
             raise ValueError(f"log_level doit être l'un de {sorted(valid_levels)}, réçu {self.log_level!r} ")
-
-Config()
