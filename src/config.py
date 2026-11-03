@@ -133,6 +133,9 @@ class Config:
                 raise ValueError(f"{field_name}_min {low!r} ne peut pas dépasser {field_name}_max {high!r} ")
 
         valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+
+        if not isinstance(self.log_level, str):
+            raise ValueError(f"log_level doit être un chaîne de caractère, réçu {self.log_level!r}")
         
         if self.log_level not in valid_levels:
             raise ValueError(f"log_level doit être l'un de {sorted(valid_levels)}, réçu {self.log_level!r} ")
