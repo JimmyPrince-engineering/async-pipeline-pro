@@ -30,7 +30,7 @@ class Producer:
     def __init__(
         self,
         stats : dict[str, int],
-        queue_out : asyncio.Queue[URLTask],
+        queue_out : asyncio.Queue[URLTask|None],
         logger : logging.Logger,
         config : Config
     ) -> None :
@@ -66,8 +66,8 @@ class Worker(ABC, Generic[InputT, OutputT]):
     def __init__(
         self,
         name : str ,
-        queue_in : asyncio.Queue[InputT],
-        queue_out : asyncio.Queue[OutputT]|None,
+        queue_in : asyncio.Queue[InputT|None],
+        queue_out : asyncio.Queue[OutputT|None]|None,
         stats : dict[str, int],
         config : Config,
         logger : logging.Logger
